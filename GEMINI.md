@@ -47,8 +47,8 @@ A robust, modern Quiz management system designed for educational institutions. I
 - The PDF export handles multi-page results by splitting the canvas image.
 
 ### Docker & Portainer Deployment (Swarm + Traefik)
-1. **Build Automático**: O GitHub Actions constrói a imagem `sidney201900/quizpro:latest` automaticamente a cada push.
-2. **Secrets**: Configure `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` no GitHub.
+1. **Build Automático**: O GitHub Actions constrói a imagem `ghcr.io/sidney201900/quizpro:latest` automaticamente a cada push.
+2. **Sem Configuração Extra**: O GHCR é gratuito e já está integrado ao seu GitHub.
 3. **Portainer**: 
    - Vá em **Stacks** -> **quizpro**.
    - No **Editor**, clique em **Update the stack** e marque **Re-pull images**.

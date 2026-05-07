@@ -5,7 +5,7 @@ services:
   # QUIZ MASTER - UNIFIED APP
   # ============================
   quiz-app:
-    image: sidney201900/quizpro:latest
+    image: ghcr.io/sidney201900/quizpro:latest
     build:
       context: .
       dockerfile: Dockerfile
