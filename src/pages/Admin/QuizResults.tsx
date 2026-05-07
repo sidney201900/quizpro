@@ -7,7 +7,7 @@ import { useState, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 export default function QuizResults() {
   const { id } = useParams<{ id: string }>();
@@ -122,29 +122,15 @@ export default function QuizResults() {
 
       const chartsContainer = document.getElementById('pdf-charts-container');
       if (chartsContainer) {
-        const canvas = await html2canvas(chartsContainer, { 
-          scale: 2, 
-          useCORS: true, 
-          logging: false,
+        // html-to-image usa SVG nativo do navegador, suportando oklch nativamente sem erros de parse
+        const imgData = await toPng(chartsContainer, { 
           backgroundColor: '#ffffff',
-          onclone: (clonedDoc: Document) => {
-            const elements = clonedDoc.querySelectorAll('*');
-            const propsToFix = ['color', 'background-color', 'border-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'fill', 'stroke'];
-            elements.forEach((el) => {
-              const htmlEl = el as HTMLElement;
-              const computed = window.getComputedStyle(htmlEl);
-              propsToFix.forEach((prop) => {
-                const val = computed.getPropertyValue(prop);
-                if (val && val !== 'none' && val !== 'initial') htmlEl.style.setProperty(prop, val);
-              });
-            });
-          }
+          pixelRatio: 2,
         });
         
-        const imgData = canvas.toDataURL('image/png');
         const finalY = (pdf as any).lastAutoTable.finalY || currentY;
         const chartPdfWidth = pdf.internal.pageSize.getWidth() - 40;
-        const chartPdfHeight = (canvas.height * chartPdfWidth) / canvas.width;
+        const chartPdfHeight = (chartsContainer.offsetHeight * chartPdfWidth) / chartsContainer.offsetWidth;
         
         if (finalY + chartPdfHeight + 20 > pdf.internal.pageSize.getHeight()) {
           pdf.addPage();
