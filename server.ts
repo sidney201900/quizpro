@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
+import multer from 'multer';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,11 +14,33 @@ const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3005;
 
+// Ensure uploads directory exists
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer config
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
 app.use(cors());
 app.use(helmet({
   contentSecurityPolicy: false,
 }));
 app.use(express.json());
+
+// Serve static files
+app.use('/uploads', express.static(uploadDir));
 
 // --- DEBUG ROUTE ---
 app.get('/debug', (req, res) => {
@@ -151,6 +175,14 @@ app.put('/api/settings', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to update settings' });
   }
+});
+
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  const url = `/uploads/${req.file.filename}`;
+  res.json({ url });
 });
 
 // --- SERVE FRONTEND ---

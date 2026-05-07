@@ -338,14 +338,28 @@ export default function AdminSettings() {
   const [adminPass, setAdminPass] = useState(settings.adminPass || 'admin');
   const [toast, setToast] = useState<string | null>(null);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setLogoUrl(data.url);
+        } else {
+          alert('Erro ao fazer upload da imagem');
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert('Erro ao conectar com o servidor para upload');
+      }
     }
   };
 
