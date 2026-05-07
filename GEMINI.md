@@ -1,4 +1,5 @@
 # Quiz Master Pro - Core Guidelines & Skills
+// Teste de escrita do assistente
 
 ## Project Vision
 A robust, modern Quiz management system designed for educational institutions. It allows administrators to create diverse quizzes (multiple choice, survey, open-ended), track student submissions, analyze results with charts, and export data in various formats.
@@ -54,3 +55,8 @@ A robust, modern Quiz management system designed for educational institutions. I
    - No **Editor**, clique em **Update the stack** e marque **Re-pull images**.
    - O domínio configurado é `quiz.microtecinformaticacurso.com.br`.
    - Certifique-se de que a rede `network_public` existe no seu Swarm.
+
+## Technical Deployment Notes
+- **Monolito Unificado**: O servidor Express (porta 3005) serve a API e o Frontend compilado em `/dist`.
+- **SSL Resolver**: O Traefik utiliza o resolver `leresolver`. **Não use** `letsencrypt`.
+- **Volumes**: O container mapeia `/app/uploads` para persistência de logos e imagens.

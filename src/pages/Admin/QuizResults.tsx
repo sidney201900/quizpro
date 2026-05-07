@@ -24,6 +24,13 @@ export default function QuizResults() {
   );
   const [selectedFilterValue, setSelectedFilterValue] = useState<string>('all');
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  
+  // Modal de Exportação
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportType, setExportType] = useState<'pdf' | 'excel'>('pdf');
+  const [tempFilterFieldId, setTempFilterFieldId] = useState(filterFieldId);
+  const [tempSelectedFilterValue, setTempSelectedFilterValue] = useState(selectedFilterValue);
+
   const reportRef = useRef<HTMLDivElement>(null);
 
   if (!quiz) {
@@ -36,12 +43,16 @@ export default function QuizResults() {
   }
 
   const handleExportPDF = async () => {
+    setFilterFieldId(tempFilterFieldId);
+    setSelectedFilterValue(tempSelectedFilterValue);
+    setIsExportModalOpen(false);
+    
     if (!reportRef.current) return;
     setIsExportingPDF(true);
     
     try {
       const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
-      await wait(300); // Allow react rendering or layout shifts to settle
+      await wait(500); 
       
       const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, logging: false });
       const imgData = canvas.toDataURL('image/png');
@@ -64,7 +75,7 @@ export default function QuizResults() {
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`relatorio_${quiz.title.replace(/\s+/g, '_')}_${filterFieldId}_${selectedFilterValue}.pdf`);
+      pdf.save(`relatorio_${quiz.title.replace(/\s+/g, '_')}_${tempSelectedFilterValue}.pdf`);
     } catch (e) {
       console.error(e);
       alert('Erro ao gerar PDF');
@@ -73,8 +84,17 @@ export default function QuizResults() {
     }
   };
 
-  const handleExport = () => {
-    const data = submissions.map(sub => {
+  const handleExportExcel = () => {
+    setFilterFieldId(tempFilterFieldId);
+    setSelectedFilterValue(tempSelectedFilterValue);
+    setIsExportModalOpen(false);
+
+    // Filter subsmissions based on modal selection for Excel too
+    const targetSubmissions = tempSelectedFilterValue === 'all' 
+      ? submissions 
+      : submissions.filter(s => (s.studentInfo[tempFilterFieldId] || '-') === tempSelectedFilterValue);
+
+    const data = targetSubmissions.map(sub => {
       const row: any = {};
       
       if (settings?.customFields) {
@@ -135,8 +155,153 @@ export default function QuizResults() {
 
   const chartColors = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6']; // Extended colors
 
+  const ChartsSection = () => (
+    <div className="space-y-8 mt-8">
+      {totalFilteredSubmissions > 0 && surveyQuestions.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Resultados da Enquete / Pesquisa (Sem certa)</h2>
+          <div className="grid md:grid-cols-2 gap-8">
+            {surveyQuestions.map((q, qIndex) => {
+               const counts: Record<string, number> = {};
+               q.options?.forEach(opt => counts[opt.id] = 0);
+               filteredSubmissions.forEach(sub => {
+                 const currentAns = sub.answers.find(a => a.questionId === q.id);
+                 if (currentAns?.selectedOptionId && counts[currentAns.selectedOptionId] !== undefined) {
+                   counts[currentAns.selectedOptionId]++;
+                 }
+               });
+               const barData = q.options?.map(opt => ({
+                 name: opt.text.length > 20 ? opt.text.substring(0, 20) + '...' : opt.text,
+                 Votos: counts[opt.id]
+               })) || [];
+               return (
+                 <div key={q.id} className="flex flex-col items-center">
+                   <p className="text-sm font-medium text-gray-600 text-center mb-4 h-10 w-full line-clamp-2">Q{quiz.questions.indexOf(q) + 1}. {q.text}</p>
+                   <div className="h-64 w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart data={barData} layout="vertical">
+                         <XAxis type="number" allowDecimals={false} />
+                         <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 10}} />
+                         <Tooltip />
+                         <Bar dataKey="Votos" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+                           {barData.map((entry, index) => <Cell key={`c-${index}`} fill={chartColors[index % chartColors.length]} />)}
+                         </Bar>
+                       </BarChart>
+                     </ResponsiveContainer>
+                   </div>
+                 </div>
+               )
+            })}
+          </div>
+        </div>
+      )}
+
+      {totalFilteredSubmissions > 0 && multipleChoiceQuestions.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Taxa de Acerto por Questão</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {multipleChoiceQuestions.map((q, qIndex) => {
+               let correct = 0;
+               let wrong = 0;
+               filteredSubmissions.forEach(sub => {
+                 const currentAns = sub.answers.find(a => a.questionId === q.id);
+                 if (currentAns?.selectedOptionId === q.correctOptionId) correct++;
+                 else wrong++;
+               });
+               const pieData = [{ name: 'Acertos', value: correct }, { name: 'Erros', value: wrong }];
+               return (
+                 <div key={q.id} className="flex flex-col items-center">
+                   <p className="text-sm font-medium text-gray-600 text-center mb-2 line-clamp-2 h-10">Q{quiz.questions.indexOf(q) + 1}. {q.text}</p>
+                   <div className="h-48 w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <PieChart>
+                         <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value" isAnimationActive={false}>
+                           {pieData.map((entry, index) => <Cell key={`pc-${index}`} fill={index === 0 ? '#10b981' : '#ef4444'} />)}
+                         </Pie>
+                         <Tooltip />
+                         <Legend />
+                       </PieChart>
+                     </ResponsiveContainer>
+                   </div>
+                 </div>
+               )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-6xl mx-auto" ref={reportRef}>
+      {/* Modal de Exportação */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4" data-html2canvas-ignore>
+           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                 {exportType === 'pdf' ? <FileText className="text-emerald-600" /> : <Download className="text-indigo-600" />}
+                 Exportar Relatório ({exportType.toUpperCase()})
+               </h3>
+               <button onClick={() => setIsExportModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                 <ArrowLeft className="w-5 h-5 rotate-90" />
+               </button>
+             </div>
+
+             <div className="space-y-4">
+               <div>
+                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Agrupar por:</label>
+                 <select 
+                   value={tempFilterFieldId} 
+                   onChange={(e) => {
+                     setTempFilterFieldId(e.target.value);
+                     setTempSelectedFilterValue('all');
+                   }}
+                   className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:border-indigo-500 border-gray-300 bg-gray-50 font-medium"
+                 >
+                   {availableFilterFields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                 </select>
+               </div>
+
+               <div>
+                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Escolher Valor (Filtro):</label>
+                 <select 
+                   value={tempSelectedFilterValue} 
+                   onChange={(e) => setTempSelectedFilterValue(e.target.value)}
+                   className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:border-indigo-500 border-gray-300 bg-gray-50 font-medium"
+                 >
+                   <option value="all">Todos os registros</option>
+                   {Array.from(new Set(submissions.map(s => s.studentInfo[tempFilterFieldId] || '-'))).sort().map(c => (
+                     <option key={c} value={c}>{c}</option>
+                   ))}
+                 </select>
+               </div>
+
+               <div className="bg-blue-50 p-4 rounded-xl text-xs text-blue-700 border border-blue-100 mt-4 leading-relaxed">
+                 <p className="font-bold mb-1">Aviso:</p>
+                 {exportType === 'pdf' 
+                   ? "O PDF incluirá a lista detalhada de respostas seguida pelos gráficos estatísticos do filtro selecionado." 
+                   : "O arquivo Excel conterá uma planilha com todos os dados dos alunos e suas respostas individuais."}
+               </div>
+             </div>
+
+             <div className="flex gap-3 mt-8">
+               <button 
+                 onClick={() => setIsExportModalOpen(false)} 
+                 className="flex-1 py-3 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold transition-all"
+               >
+                 Cancelar
+               </button>
+               <button 
+                 onClick={exportType === 'pdf' ? handleExportPDF : handleExportExcel}
+                 className={`flex-1 py-3 text-white rounded-xl font-bold transition-all shadow-md ${exportType === 'pdf' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+               >
+                 Gerar {exportType.toUpperCase()}
+               </button>
+             </div>
+           </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/admin')} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" data-html2canvas-ignore>
@@ -149,15 +314,15 @@ export default function QuizResults() {
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full sm:w-auto gap-3" data-html2canvas-ignore>
           <button
-            onClick={handleExportPDF}
+            onClick={() => { setExportType('pdf'); setIsExportModalOpen(true); }}
             disabled={submissions.length === 0 || isExportingPDF}
             className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileText className="w-5 h-5" />
-            {isExportingPDF ? 'Gerando...' : 'Exportar PDF'}
+            Exportar PDF
           </button>
           <button
-            onClick={handleExport}
+            onClick={() => { setExportType('excel'); setIsExportModalOpen(true); }}
             disabled={submissions.length === 0}
             className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -222,199 +387,137 @@ export default function QuizResults() {
              </div>
            </div>
         </div>
+           {/* Gráficos na tela (apenas para visualização rápida, escondidos no PDF pois estarão no fim) */}
+      <div data-html2canvas-ignore>
+        <ChartsSection />
       </div>
-
-      {totalFilteredSubmissions > 0 && surveyQuestions.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Resultados da Enquete / Pesquisa (Sem certa)</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            {surveyQuestions.map((q, qIndex) => {
-               const counts: Record<string, number> = {};
-               q.options?.forEach(opt => counts[opt.id] = 0);
-               let noneCount = 0;
-
-               filteredSubmissions.forEach(sub => {
-                 const currentAns = sub.answers.find(a => a.questionId === q.id);
-                 if (currentAns?.selectedOptionId && counts[currentAns.selectedOptionId] !== undefined) {
-                   counts[currentAns.selectedOptionId]++;
-                 } else {
-                   noneCount++;
-                 }
-               });
-               
-               const barData = q.options?.map(opt => ({
-                 name: opt.text.length > 20 ? opt.text.substring(0, 20) + '...' : opt.text,
-                 fullName: opt.text,
-                 Votos: counts[opt.id]
-               })) || [];
-
-               return (
-                 <div key={q.id} className="flex flex-col items-center">
-                   <p className="text-sm font-medium text-gray-600 text-center mb-4 line-clamp-2 h-10 w-full">
-                     Q{quiz.questions.indexOf(q) + 1}. {q.text}
-                   </p>
-                   <div className="h-64 w-full">
-                     <ResponsiveContainer width="100%" height="100%">
-                       <BarChart data={barData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                         <XAxis type="number" allowDecimals={false} />
-                         <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 12}} />
-                         <Tooltip formatter={(value: number) => [`${value} votos`, 'Quantidade']} />
-                         <Bar dataKey="Votos" fill="#8b5cf6" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                           {barData.map((entry, index) => (
-                             <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                           ))}
-                         </Bar>
-                       </BarChart>
-                     </ResponsiveContainer>
-                   </div>
-                 </div>
-               )
-            })}
-          </div>
-        </div>
+>
       )}
 
-      {totalFilteredSubmissions > 0 && multipleChoiceQuestions.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Taxa de Acerto por Questão (Múltipla Escolha)</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {multipleChoiceQuestions.map((q, qIndex) => {
-               let correct = 0;
-               let wrong = 0;
-               filteredSubmissions.forEach(sub => {
-                 const currentAns = sub.answers.find(a => a.questionId === q.id);
-                 if (currentAns?.selectedOptionId === q.correctOptionId) {
-                   correct++;
-                 } else {
-                   wrong++;
-                 }
-               });
-               
-               const pieData = [
-                 { name: 'Acertos', value: correct },
-                 { name: 'Erros', value: wrong }
-               ];
-
-               return (
-                 <div key={q.id} className="flex flex-col items-center">
-                   <p className="text-sm font-medium text-gray-600 text-center mb-2 line-clamp-2 h-10">
-                     Q{quiz.questions.indexOf(q) + 1}. {q.text}
-                   </p>
-                   <div className="h-48 w-full">
-                     <ResponsiveContainer width="100%" height="100%">
-                       <PieChart>
-                         <Pie
-                           data={pieData}
-                           cx="50%"
-                           cy="50%"
-                           innerRadius={40}
-                           outerRadius={60}
-                           paddingAngle={5}
-                           dataKey="value"
-                           isAnimationActive={false}
-                         >
-                           {pieData.map((entry, index) => (
-                             <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                           ))}
-                         </Pie>
-                         <Tooltip />
-                         <Legend />
-                       </PieChart>
-                     </ResponsiveContainer>
-                   </div>
-                 </div>
-               )
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8" data-html2canvas-ignore={isExportingPDF ? false : undefined}>
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900">Respostas Detalhadas</h2>
+          <h2 className="text-xl font-bold text-gray-900">Lista Geral de Respostas</h2>
+          <span className="text-sm text-gray-500">{filteredSubmissions.length} registros encontrados</span>
         </div>
         
-        {submissions.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">Nenhuma resposta registrada ainda.</div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {submissions.map((sub) => (
-              <div key={sub.id} className="p-4">
-                <div 
-                  className="flex justify-between items-center cursor-pointer hover:bg-gray-50/50 p-2 rounded-lg transition-colors"
-                  onClick={() => setExpandedSub(expandedSub === sub.id ? null : sub.id)}
-                >
-                  <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
-                    {settings?.customFields ? (
-                      <>
-                        {settings.customFields.slice(0, 3).map((f, idx) => (
-                           <span key={f.id} className={idx === 0 ? "font-semibold text-gray-900 min-w-32 max-w-48 truncate" : "text-sm text-gray-500"}>
-                             {idx !== 0 && `${f.name}: `}{sub.studentInfo[f.id] || '-'}
-                           </span>
-                        ))}
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-semibold text-gray-900 min-w-32 max-w-48 truncate">{sub.studentInfo.name}</span>
-                        <span className="text-sm text-gray-500 min-w-24">Série: {sub.studentInfo.grade || '-'}</span>
-                        <span className="text-sm text-gray-500 min-w-24">Turma: {sub.studentInfo.classRoom || '-'}</span>
-                      </>
-                    )}
-                    <span className="text-sm text-gray-400">{new Date(sub.submittedAt).toLocaleDateString()}</span>
-                  </div>
-                  <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${expandedSub === sub.id ? 'rotate-180' : ''}`} />
-                </div>
-                
-                {expandedSub === sub.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 px-2 pl-6 pb-4">
-                    <div className="space-y-6">
-                      {quiz.questions.map((q, i) => {
-                        const answer = sub.answers.find(a => a.questionId === q.id);
-                        const isCorrect = q.type === 'multiple_choice' && answer?.selectedOptionId === q.correctOptionId;
-                        return (
-                          <div key={q.id}>
-                            <p className="font-medium text-gray-800 mb-2">{i + 1}. {q.text}</p>
-                            {q.type === 'open_ended' ? (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                <p className="text-gray-700 whitespace-pre-wrap">{answer?.answerText || <span className="text-gray-400 italic">Não respondido</span>}</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {q.options?.map(opt => {
-                                  const isSelected = answer?.selectedOptionId === opt.id;
-                                  const isCorrectOpt = q.type === 'multiple_choice' && q.correctOptionId === opt.id;
-                                  const isSurvey = q.type === 'survey';
-                                  
-                                  return (
-                                    <div 
-                                      key={opt.id} 
-                                      className={`p-2 rounded-lg text-sm border flex justify-between items-center ${
-                                        isSurvey && isSelected ? 'bg-indigo-50 border-indigo-200 text-indigo-800 font-medium' :
-                                        !isSurvey && isSelected && isCorrectOpt ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-medium' :
-                                        !isSurvey && isSelected && !isCorrectOpt ? 'bg-red-50 border-red-200 text-red-800 font-medium' :
-                                        !isSurvey && !isSelected && isCorrectOpt ? 'bg-gray-50 border-emerald-400 border-dashed text-gray-700' :
-                                        'bg-white border-transparent text-gray-600'
-                                      }`}
-                                    >
-                                      <span>{opt.text}</span>
-                                      {isSelected && <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-black/5 opacity-70">Sua Resposta</span>}
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Aluno / Identificação</th>
+                {settings?.customFields?.map(f => (
+                  <th key={f.id} className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">{f.name}</th>
+                )) || (
+                  <>
+                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Escola</th>
+                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Turma</th>
+                  </>
                 )}
-              </div>
-            ))}
-          </div>
-        )}
+                <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Data</th>
+                <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredSubmissions.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">Nenhuma resposta encontrada para este filtro.</td>
+                </tr>
+              ) : (
+                filteredSubmissions.map((sub) => (
+                  <React.Fragment key={sub.id}>
+                    <tr className={`hover:bg-gray-50 transition-colors ${expandedSub === sub.id ? 'bg-indigo-50/30' : ''}`}>
+                      <td className="px-4 py-4">
+                        <div className="font-semibold text-gray-900 truncate max-w-[200px]">
+                          {sub.studentInfo.name || sub.studentInfo[settings?.customFields?.[0]?.id || ''] || 'Sem Nome'}
+                        </div>
+                      </td>
+                      {settings?.customFields ? (
+                        settings.customFields.map(f => (
+                          <td key={f.id} className="px-4 py-4 text-sm text-gray-600">
+                            {sub.studentInfo[f.id] || '-'}
+                          </td>
+                        ))
+                      ) : (
+                        <>
+                          <td className="px-4 py-4 text-sm text-gray-600">{sub.studentInfo.school || '-'}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600">{sub.studentInfo.classRoom || '-'}</td>
+                        </>
+                      )}
+                      <td className="px-4 py-4 text-sm text-gray-500 whitespace-nowrap">
+                        {new Date(sub.submittedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-4 text-center" data-html2canvas-ignore>
+                        <button 
+                          onClick={() => setExpandedSub(expandedSub === sub.id ? null : sub.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${expandedSub === sub.id ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                        >
+                          <ChevronDown className={`w-5 h-5 transition-transform ${expandedSub === sub.id ? 'rotate-180' : ''}`} />
+                        </button>
+                      </td>
+                    </tr>
+                    {(expandedSub === sub.id || isExportingPDF) && (
+                      <tr className={isExportingPDF ? '' : 'bg-gray-50/50'}>
+                        <td colSpan={10} className="px-8 py-6">
+                          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                            <h4 className="font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                              <FileText className="w-4 h-4" /> Respostas de {sub.studentInfo.name || 'Aluno'}
+                            </h4>
+                            <div className="space-y-6">
+                              {quiz.questions.map((q, i) => {
+                                const answer = sub.answers.find(a => a.questionId === q.id);
+                                return (
+                                  <div key={q.id} className="border-l-4 border-indigo-100 pl-4">
+                                    <p className="font-semibold text-gray-800 mb-2">{i + 1}. {q.text}</p>
+                                    {q.type === 'open_ended' ? (
+                                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 italic text-gray-700">
+                                        {answer?.answerText || "Não respondido"}
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-2">
+                                        {q.options?.map(opt => {
+                                          const isSelected = answer?.selectedOptionId === opt.id;
+                                          const isCorrectOpt = q.type === 'multiple_choice' && q.correctOptionId === opt.id;
+                                          return (
+                                            <div 
+                                              key={opt.id} 
+                                              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                                                isSelected ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 
+                                                isCorrectOpt ? 'bg-emerald-50 border-emerald-300 text-emerald-700' :
+                                                'bg-white border-gray-200 text-gray-500'
+                                              }`}
+                                            >
+                                              {opt.text} {isSelected && " (Selecionado)"}
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Gráficos no final do PDF (Renderizados apenas para captura se isExportingPDF) */}
+      {(isExportingPDF) && (
+        <div className="mt-12 border-t pt-8">
+           <div className="text-center mb-8">
+             <h2 className="text-2xl font-bold text-indigo-900">Resumo Estatístico do Filtro</h2>
+             <p className="text-gray-500">Filtrado por: {tempSelectedFilterValue === 'all' ? 'Geral' : tempSelectedFilterValue}</p>
+           </div>
+           <ChartsSection />
+        </div>
+      )}
     </div>
   );
 }

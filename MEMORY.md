@@ -1,28 +1,32 @@
 # Development Memory - Quiz Master Pro
 
 ## Current State
-The project is now a **Fullstack** application with PostgreSQL support.
-- [x] Admin Authentication (Synced with DB).
-- [x] CRUD for Quizzes & Questions (Synced with DB).
-- [x] Dynamic Identification Fields.
-- [x] Results Dashboard & Charts.
-- [x] Multi-format Export (PDF/Excel).
-- [x] Dockerized (3-service stack: Frontend, Backend, PostgreSQL).
-- [x] Versioned on GitHub.
+The project is a **Unified Fullstack Monolith** optimized for ARM64/Docker Swarm.
+- [x] Admin Authentication (Synced with PostgreSQL).
+- [x] CRUD for Quizzes & Questions (Synced with PostgreSQL).
+- [x] Dynamic Identification Fields (Customizable by Admin).
+- [x] Results Dashboard & Charts (Recharts).
+- [x] Multi-format Export (PDF via html2canvas/jsPDF, Excel via xlsx).
+- [x] **Unified Architecture**: Express server serves both API and React Frontend (`dist`).
+- [x] **Real Persistence**: Persistent Docker Volume for uploads and PostgreSQL data.
+- [x] **SSL/HTTPS**: Automated via Traefik with `leresolver`.
 
-## Recent Changes
-- Converted project to Fullstack (Node/Express Backend + Prisma + PostgreSQL).
-- Refactored Zustand store to sync with Backend API.
-- Created `Dockerfile.backend` and updated `docker-compose.yml`.
-- Configured Nginx proxy in frontend Dockerfile to handle API requests.
+## Recent Changes (May 2026)
+- **Fullstack Unification**: Merged Frontend and Backend into a single container for easier deployment and port management (Port 3005).
+- **File Upload System**: Implemented `/api/upload` using Multer. Logos are now saved on disk and persisted via Docker Volumes.
+- **SSL Fix**: Corrected Traefik labels to use `leresolver` instead of `letsencrypt` to match server configuration.
+- **UI/Branding**: Changed project name to **Quiz Master**, added custom favicon and SEO meta tags.
+- **Deployment Stabilization**: Optimized Dockerfile for node:20-slim (Debian) to ensure Prisma compatibility on ARM64.
 
 ## Pending Tasks / Next Steps
 1. **Gemini AI Integration**: Implement automatic quiz generation or analysis using `@google/genai`.
-2. **Responsive Polish**: Ensure all dashboards are perfectly responsive on mobile (mostly done, but needs check).
-3. **Data Management**: Add a way to clear all submissions for a specific quiz without deleting the quiz itself.
-4. **Enhanced Security**: Consider adding a "Public/Private" toggle for quizzes.
-5. **Real-time Updates**: (Optional) integrate with a backend for real-time result tracking (currently local storage only).
+2. **Delete Submissions**: Add a button to clear all results of a quiz without deleting the quiz structure.
+3. **Advanced Reporting**: Add filtering by date range in the results dashboard.
 
-## Knowledge Gaps / Technical Debt
-- **Persistence**: Relies entirely on `localStorage`. A browser clear will wipe all data.
-- **File Uploads**: Logo upload stores the image as a Base64 string in `localStorage`. This might hit storage limits (5MB-10MB) if high-resolution images are used.
+## Technical Architecture
+- **Port**: 3005 (Internal/External via Traefik).
+- **Network**: `network_public` (External).
+- **Volumes**: 
+  - `quiz_pgdata`: Database persistence.
+  - `quiz_uploads`: Uploaded images/logos persistence.
+- **Resolver**: `leresolver` (ACME Let's Encrypt).
