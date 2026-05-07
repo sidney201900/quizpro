@@ -2,17 +2,19 @@ version: '3.8'
 
 services:
   # ============================
-  # QUIZ MASTER - FRONTEND
+  # QUIZ MASTER - UNIFIED APP
   # ============================
   quiz-app:
-    image: sidney201900/quizpro-frontend:latest
+    image: sidney201900/quizpro:latest
     build:
       context: .
       dockerfile: Dockerfile
     environment:
+      - DATABASE_URL=postgresql://quizuser:quizpass@quiz-db:5432/quizdb?schema=public
+      - PORT=3001
       - VITE_API_URL=/api
     depends_on:
-      - quiz-api
+      - quiz-db
     networks:
       - quizpro-internal
       - network_public
@@ -20,42 +22,16 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+        condition: any
+        delay: 10s
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.quiz-pro.rule=Host(`quiz.microtecinformaticacurso.com.br`)"
         - "traefik.http.routers.quiz-pro.entrypoints=websecure"
         - "traefik.http.routers.quiz-pro.tls=true"
         - "traefik.http.routers.quiz-pro.tls.certresolver=letsencrypt"
-        - "traefik.http.services.quiz-pro.loadbalancer.server.port=80"
+        - "traefik.http.services.quiz-pro.loadbalancer.server.port=3001"
         - "traefik.docker.network=network_public"
-
-  # ============================
-  # QUIZ MASTER - BACKEND API
-  # ============================
-  quiz-api:
-    image: sidney201900/quizpro-backend:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    environment:
-      - DATABASE_URL=postgresql://quizuser:quizpass@quiz-db:5432/quizdb?schema=public
-      - PORT=3001
-    depends_on:
-      - quiz-db
-    networks:
-      - quizpro-internal
-    deploy:
-      mode: replicated
-      replicas: 1
-      restart_policy:
-        condition: any # Reinicia sempre que falhar (útil para aguardar o banco)
-        delay: 10s
-        max_attempts: 10
-        window: 120s
 
   # ============================
   # QUIZ MASTER - DATABASE
@@ -71,7 +47,6 @@ services:
     networks:
       - quizpro-internal
     deploy:
-      mode: replicated
       replicas: 1
       restart_policy:
         condition: on-failure

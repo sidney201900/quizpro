@@ -1,7 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const prisma = new PrismaClient();
 const app = express();
@@ -9,11 +14,11 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP for easier development/preview
+  contentSecurityPolicy: false,
 }));
 app.use(express.json());
 
-// --- Quizzes ---
+// --- API ROUTES ---
 app.get('/api/quizzes', async (req, res) => {
   try {
     const quizzes = await prisma.quiz.findMany({
@@ -79,7 +84,6 @@ app.delete('/api/quizzes/:id', async (req, res) => {
   }
 });
 
-// --- Submissions ---
 app.get('/api/submissions', async (req, res) => {
   try {
     const submissions = await prisma.submission.findMany();
@@ -101,12 +105,10 @@ app.post('/api/submissions', async (req, res) => {
   }
 });
 
-// --- Settings ---
 app.get('/api/settings', async (req, res) => {
   try {
     let settings = await prisma.settings.findUnique({ where: { id: 'global' } });
     if (!settings) {
-      // Create default settings if not exists
       settings = await prisma.settings.create({
         data: {
           id: 'global',
@@ -127,7 +129,7 @@ app.get('/api/settings', async (req, res) => {
 app.put('/api/settings', async (req, res) => {
   try {
     const data = req.body;
-    delete data.id; // Don't update the ID
+    delete data.id;
     const settings = await prisma.settings.upsert({
       where: { id: 'global' },
       update: data,
@@ -139,6 +141,16 @@ app.put('/api/settings', async (req, res) => {
   }
 });
 
+// --- SERVE FRONTEND ---
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Unified server running on port ${port}`);
 });
