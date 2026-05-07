@@ -387,7 +387,9 @@ export default function QuizResults() {
              </div>
            </div>
         </div>
-           {/* Gráficos na tela (apenas para visualização rápida, escondidos no PDF pois estarão no fim) */}
+      </div>
+
+      {/* Gráficos na tela (apenas para visualização rápida, escondidos no PDF pois estarão no fim) */}
       <div data-html2canvas-ignore>
         <ChartsSection />
       </div>
