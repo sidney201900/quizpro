@@ -1,20 +1,20 @@
 # Development Memory - Quiz Master Pro
 
 ## Current State
-The project is a fully functional MVP for a Quiz system, now versioned on GitHub and ready for containerized deployment.
-- [x] Admin Authentication.
-- [x] CRUD for Quizzes & Questions.
+The project is now a **Fullstack** application with PostgreSQL support.
+- [x] Admin Authentication (Synced with DB).
+- [x] CRUD for Quizzes & Questions (Synced with DB).
 - [x] Dynamic Identification Fields.
 - [x] Results Dashboard & Charts.
 - [x] Multi-format Export (PDF/Excel).
-- [x] Dockerized (Dockerfile + docker-compose.yml).
-- [x] Versioned on GitHub: https://github.com/sidney201900/quizpro.git
+- [x] Dockerized (3-service stack: Frontend, Backend, PostgreSQL).
+- [x] Versioned on GitHub.
 
 ## Recent Changes
-- Initial project read and architecture analysis.
-- Created `GEMINI.md` and `MEMORY.md` for project context.
-- Created `Dockerfile` (multi-stage Node/Nginx) and `docker-compose.yml` (Swarm ready).
-- Initialized Git repository and pushed to GitHub.
+- Converted project to Fullstack (Node/Express Backend + Prisma + PostgreSQL).
+- Refactored Zustand store to sync with Backend API.
+- Created `Dockerfile.backend` and updated `docker-compose.yml`.
+- Configured Nginx proxy in frontend Dockerfile to handle API requests.
 
 ## Pending Tasks / Next Steps
 1. **Gemini AI Integration**: Implement automatic quiz generation or analysis using `@google/genai`.

@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Quiz {
+  id          String       @id @default(uuid())
+  slug        String?      @unique
+  title       String
+  description String?
+  createdAt   DateTime     @default(now())
+  questions   Json         // Array of Question objects
+  submissions Submission[]
+}
+
+model Submission {
+  id          String   @id @default(uuid())
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentInfo Json     // Record<string, any>
+  answers     Json     // Array of AnswerItem objects
+  submittedAt DateTime @default(now())
+  score       Float?
+}
+
+model Settings {
+  id          String @id @default("global")
+  logoUrl     String @default("")
+  schools     Json   // string[]
+  shifts      Json   // string[]
+  grades      Json   // string[]
+  classes     Json   // string[]
+  adminUser   String @default("admin")
+  adminPass   String @default("admin")
+  customFields Json   // CustomField[]
+}

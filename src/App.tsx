@@ -1,8 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -61,6 +57,12 @@ function Header() {
 }
 
 export default function App() {
+  const fetchInitialData = useQuizStore((state) => state.fetchInitialData);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-50 flex flex-col">

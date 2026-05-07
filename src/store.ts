@@ -1,21 +1,24 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Quiz, Submission, AppSettings } from './types';
-import { v4 as uuidv4 } from 'uuid';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 interface QuizStore {
   quizzes: Quiz[];
   submissions: Submission[];
   settings: AppSettings;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  fetchInitialData: () => Promise<void>;
   login: (username: string, password: string) => boolean;
   logout: () => void;
-  addQuiz: (quiz: Omit<Quiz, 'id' | 'createdAt'>) => Quiz;
-  deleteQuiz: (id: string) => void;
-  addSubmission: (submission: Omit<Submission, 'id' | 'submittedAt'>) => void;
+  addQuiz: (quiz: Omit<Quiz, 'id' | 'createdAt'>) => Promise<Quiz | null>;
+  deleteQuiz: (id: string) => Promise<void>;
+  addSubmission: (submission: Omit<Submission, 'id' | 'submittedAt'>) => Promise<void>;
   getSubmissionsByQuizId: (quizId: string) => Submission[];
-  updateSettings: (settings: AppSettings) => void;
-  updateQuiz: (id: string, quiz: Partial<Omit<Quiz, 'id' | 'createdAt'>>) => void;
+  updateSettings: (settings: AppSettings) => Promise<void>;
+  updateQuiz: (id: string, quiz: Partial<Omit<Quiz, 'id' | 'createdAt'>>) => Promise<void>;
 }
 
 const defaultSettings: AppSettings = {
@@ -36,6 +39,29 @@ export const useQuizStore = create<QuizStore>()(
       submissions: [],
       settings: defaultSettings,
       isAuthenticated: false,
+      isLoading: false,
+
+      fetchInitialData: async () => {
+        set({ isLoading: true });
+        try {
+          const [quizzesRes, submissionsRes, settingsRes] = await Promise.all([
+            fetch(`${API_URL}/quizzes`),
+            fetch(`${API_URL}/submissions`),
+            fetch(`${API_URL}/settings`),
+          ]);
+
+          const quizzes = await quizzesRes.json();
+          const submissions = await submissionsRes.json();
+          const settings = await settingsRes.json();
+
+          set({ quizzes, submissions, settings });
+        } catch (error) {
+          console.error('Failed to fetch initial data:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
       login: (username, password) => {
         const settings = get().settings;
         const validUser = settings.adminUser || 'admin';
@@ -47,47 +73,90 @@ export const useQuizStore = create<QuizStore>()(
         }
         return false;
       },
+
       logout: () => {
         set({ isAuthenticated: false });
       },
-      addQuiz: (quizData) => {
-        const newQuiz: Quiz = {
-          ...quizData,
-          id: uuidv4(),
-          createdAt: new Date().toISOString(),
-        };
-        set((state) => ({ quizzes: [...state.quizzes, newQuiz] }));
-        return newQuiz;
+
+      addQuiz: async (quizData) => {
+        try {
+          const res = await fetch(`${API_URL}/quizzes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(quizData),
+          });
+          const newQuiz = await res.json();
+          set((state) => ({ quizzes: [newQuiz, ...state.quizzes] }));
+          return newQuiz;
+        } catch (error) {
+          console.error('Failed to add quiz:', error);
+          return null;
+        }
       },
-      deleteQuiz: (id) => {
-        set((state) => ({
-          quizzes: state.quizzes.filter((q) => q.id !== id),
-          submissions: state.submissions.filter((s) => s.quizId !== id),
-        }));
+
+      deleteQuiz: async (id) => {
+        try {
+          await fetch(`${API_URL}/quizzes/${id}`, { method: 'DELETE' });
+          set((state) => ({
+            quizzes: state.quizzes.filter((q) => q.id !== id),
+            submissions: state.submissions.filter((s) => s.quizId !== id),
+          }));
+        } catch (error) {
+          console.error('Failed to delete quiz:', error);
+        }
       },
-      addSubmission: (subData) => {
-        const newSub: Submission = {
-          ...subData,
-          id: uuidv4(),
-          submittedAt: new Date().toISOString(),
-        };
-        set((state) => ({ submissions: [...state.submissions, newSub] }));
+
+      addSubmission: async (subData) => {
+        try {
+          const res = await fetch(`${API_URL}/submissions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subData),
+          });
+          const newSub = await res.json();
+          set((state) => ({ submissions: [...state.submissions, newSub] }));
+        } catch (error) {
+          console.error('Failed to add submission:', error);
+        }
       },
+
       getSubmissionsByQuizId: (quizId) => {
         return get().submissions.filter((s) => s.quizId === quizId);
       },
-      updateSettings: (settings) => {
-        set({ settings });
+
+      updateSettings: async (settings) => {
+        try {
+          const res = await fetch(`${API_URL}/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings),
+          });
+          const updatedSettings = await res.json();
+          set({ settings: updatedSettings });
+        } catch (error) {
+          console.error('Failed to update settings:', error);
+        }
       },
-      updateQuiz: (id, quiz) => {
-        set((state) => ({
-          quizzes: state.quizzes.map((q) => (q.id === id ? { ...q, ...quiz } : q)),
-        }));
+
+      updateQuiz: async (id, quiz) => {
+        try {
+          const res = await fetch(`${API_URL}/quizzes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(quiz),
+          });
+          const updatedQuiz = await res.json();
+          set((state) => ({
+            quizzes: state.quizzes.map((q) => (q.id === id ? updatedQuiz : q)),
+          }));
+        } catch (error) {
+          console.error('Failed to update quiz:', error);
+        }
       },
     }),
     {
-      name: 'quiz-storage',
+      name: 'quiz-auth-storage',
+      partialize: (state) => ({ isAuthenticated: state.isAuthenticated }), // Only persist auth state
     }
   )
 );
-

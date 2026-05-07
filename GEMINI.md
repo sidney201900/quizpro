@@ -5,19 +5,20 @@ A robust, modern Quiz management system designed for educational institutions. I
 
 ## Tech Stack
 - **Frontend**: React 19 (Vite)
-- **Language**: TypeScript
+- **Backend**: Node.js (Express)
+- **Database**: PostgreSQL (via Prisma)
 - **Styling**: TailwindCSS (v4)
 - **Icons**: Lucide React
 - **Animations**: Motion (Framer Motion)
-- **State Management**: Zustand with persistence (localStorage)
+- **State Management**: Zustand (Local sync + API fetch)
 - **Charts**: Recharts
 - **Data Export**: xlsx (Excel), jspdf & html2canvas (PDF)
-- **AI**: Google Gemini SDK (`@google/genai`) - *Configured for future implementation*
+- **AI**: Google Gemini SDK (`@google/genai`)
 
 ## Core Rules & Business Logic
-1. **State Persistence**: All data (quizzes, submissions, settings) is stored in `localStorage` via Zustand's `persist` middleware. Key: `quiz-storage`.
-2. **Identification**: Students identify themselves via custom fields defined in Admin Settings.
-3. **Authentication**: Simple username/password check against the values stored in `settings`. Default: `admin/admin`.
+1. **State Persistence**: Data is stored in **PostgreSQL**. The frontend syncs with the Backend API on load and during updates.
+2. **Identification**: Students identify themselves via custom fields.
+3. **Authentication**: Admin login is verified against the database.
 4. **Links**: Quizzes can have custom slugs or use their UUID for the respondent link.
 5. **Data Export**: Support for Excel (raw data) and PDF (visual reports).
 
