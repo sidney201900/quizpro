@@ -1,67 +1,86 @@
 version: '3.8'
 
 services:
-  # Frontend
-  app:
+  # ============================
+  # QUIZ MASTER - FRONTEND
+  # ============================
+  quiz-app:
     image: sidney201900/quizpro-frontend:latest
     build:
       context: .
       dockerfile: Dockerfile
-    # ports: # Comentado porque o Traefik cuidará do roteamento na porta 80/443
-    #   - "80:80"
     environment:
       - VITE_API_URL=/api
     depends_on:
-      - api
+      - quiz-api
     networks:
-      - quiz-net
-      - traefik-public # Rede para comunicação com o Traefik
+      - quizpro-internal
+      - network_public
     deploy:
+      mode: replicated
       replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.quizpro.rule=Host(`quiz.microtecinformaticacurso.com.br`)"
-        - "traefik.http.routers.quizpro.entrypoints=websecure"
-        - "traefik.http.routers.quizpro.tls.certresolver=letsencrypt"
-        - "traefik.http.services.quizpro.loadbalancer.server.port=80"
-        - "traefik.docker.network=traefik-public"
+        - "traefik.http.routers.quiz-pro.rule=Host(`quiz.microtecinformaticacurso.com.br`)"
+        - "traefik.http.routers.quiz-pro.entrypoints=websecure"
+        - "traefik.http.routers.quiz-pro.tls=true"
+        - "traefik.http.routers.quiz-pro.tls.certresolver=letsencrypt"
+        - "traefik.http.services.quiz-pro.loadbalancer.server.port=80"
+        - "traefik.docker.network=network_public"
 
-  # Backend API
-  api:
+  # ============================
+  # QUIZ MASTER - BACKEND API
+  # ============================
+  quiz-api:
     image: sidney201900/quizpro-backend:latest
     build:
       context: .
       dockerfile: Dockerfile.backend
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/quizdb?schema=public
+      - DATABASE_URL=postgresql://quizuser:quizpass@quiz-db:5432/quizdb?schema=public
       - PORT=3001
     depends_on:
-      - db
+      - quiz-db
     networks:
-      - quiz-net
+      - quizpro-internal
     deploy:
+      mode: replicated
       replicas: 1
+      restart_policy:
+        condition: any # Reinicia sempre que falhar (útil para aguardar o banco)
+        delay: 10s
+        max_attempts: 10
+        window: 120s
 
-  # PostgreSQL Database
-  db:
+  # ============================
+  # QUIZ MASTER - DATABASE
+  # ============================
+  quiz-db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=quizuser
+      - POSTGRES_PASSWORD=quizpass
       - POSTGRES_DB=quizdb
     volumes:
-      - quiz-db-data:/var/lib/postgresql/data
+      - quiz_pgdata:/var/lib/postgresql/data
     networks:
-      - quiz-net
+      - quizpro-internal
     deploy:
+      mode: replicated
       replicas: 1
+      restart_policy:
+        condition: on-failure
 
 networks:
-  quiz-net:
+  quizpro-internal:
     driver: overlay
-  traefik-public:
-    external: true # Assume que você já tem essa rede criada para o Traefik
+  network_public:
+    external: true
 
 volumes:
-  quiz-db-data:
-    driver: local
+  quiz_pgdata:
