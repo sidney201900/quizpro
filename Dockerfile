@@ -20,12 +20,14 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm install --omit=dev
+# Install ALL dependencies (tsx is needed at runtime)
+RUN npm install
 
-# Copy compiled files and prisma client
+# Copy frontend build output
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/dist-server ./dist-server
+
+# Copy server source and prisma files
+COPY --from=build /app/server.ts ./server.ts
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
