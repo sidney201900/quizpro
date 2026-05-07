@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Quiz, Submission, AppSettings } from './types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = '/api';
 
 interface QuizStore {
   quizzes: Quiz[];
