@@ -1,5 +1,8 @@
 # Build Stage
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
+
+# Instala openssl para o Prisma
+RUN apt-get update && apt-get install -y openssl
 
 WORKDIR /app
 COPY package*.json ./
@@ -9,7 +12,10 @@ RUN npx prisma generate
 RUN npm run build
 
 # Run Stage
-FROM node:20-alpine
+FROM node:20-slim
+
+# Instala openssl para o Prisma no stage final
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY package*.json ./
