@@ -142,14 +142,11 @@ app.put('/api/settings', async (req, res) => {
 });
 
 // --- SERVE FRONTEND ---
-// Serve static files from the React app
-// We go up one level because server.js is in dist-server/
-app.use(express.static(path.join(__dirname, '..', 'dist')));
+const root = process.cwd();
+app.use(express.static(path.join(root, 'dist')));
 
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  res.sendFile(path.join(root, 'dist', 'index.html'));
 });
 
 app.listen(port, () => {
