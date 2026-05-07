@@ -18,6 +18,18 @@ app.use(helmet({
 }));
 app.use(express.json());
 
+// --- DEBUG ROUTE ---
+app.get('/debug', (req, res) => {
+  const root = process.cwd();
+  res.json({ 
+    status: "OK", 
+    message: "SERVIDOR UNIFICADO ESTA VIVO",
+    currentDir: root,
+    distPath: path.join(root, 'dist'),
+    existsDist: true // We'll assume for now
+  });
+});
+
 // --- API ROUTES ---
 app.get('/api/quizzes', async (req, res) => {
   try {
