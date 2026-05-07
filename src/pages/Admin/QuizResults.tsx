@@ -391,8 +391,6 @@ export default function QuizResults() {
       <div data-html2canvas-ignore>
         <ChartsSection />
       </div>
->
-      )}
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8" data-html2canvas-ignore={isExportingPDF ? false : undefined}>
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
