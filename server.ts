@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 const prisma = new PrismaClient();
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3005;
 
 app.use(cors());
 app.use(helmet({

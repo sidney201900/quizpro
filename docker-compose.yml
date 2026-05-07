@@ -11,7 +11,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql://quizuser:quizpass@quiz-db:5432/quizdb?schema=public
-      - PORT=3001
+      - PORT=3005
       - VITE_API_URL=/api
     depends_on:
       - quiz-db
@@ -30,7 +30,7 @@ services:
         - "traefik.http.routers.quiz-pro.entrypoints=websecure"
         - "traefik.http.routers.quiz-pro.tls=true"
         - "traefik.http.routers.quiz-pro.tls.certresolver=letsencrypt"
-        - "traefik.http.services.quiz-pro.loadbalancer.server.port=3001"
+        - "traefik.http.services.quiz-pro.loadbalancer.server.port=3005"
         - "traefik.docker.network=network_public"
 
   # ============================

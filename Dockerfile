@@ -29,6 +29,6 @@ COPY --from=build /app/dist-server ./dist-server
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
-EXPOSE 3001
+EXPOSE 3005
 
 CMD ["sh", "-c", "npx prisma db push && npm run start"]
