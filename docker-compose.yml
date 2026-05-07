@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  quiz-master:
+    image: quiz-master-pro:latest # You should replace this with your registry image: username/repo:tag
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    networks:
+      - quiz-net
+
+networks:
+  quiz-net:
+    driver: overlay
