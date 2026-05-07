@@ -26,11 +26,11 @@ services:
         delay: 10s
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.quizpro-unified.rule=Host(`quiz.microtecinformaticacurso.com.br`)"
-        - "traefik.http.routers.quizpro-unified.entrypoints=websecure"
-        - "traefik.http.routers.quizpro-unified.tls=true"
-        - "traefik.http.routers.quizpro-unified.tls.certresolver=letsencrypt"
-        - "traefik.http.services.quizpro-unified.loadbalancer.server.port=3005"
+        - "traefik.http.routers.quizsite.rule=Host(`quiz.microtecinformaticacurso.com.br`)"
+        - "traefik.http.routers.quizsite.entrypoints=websecure"
+        - "traefik.http.routers.quizsite.tls=true"
+        - "traefik.http.routers.quizsite.tls.certresolver=leresolver"
+        - "traefik.http.services.quizsite.loadbalancer.server.port=3005"
         - "traefik.docker.network=network_public"
 
   # ============================
