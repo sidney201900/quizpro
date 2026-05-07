@@ -1,9 +1,10 @@
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuizStore } from '../../store';
 import { ArrowLeft, Download, FileText,   Users, CheckCircle2, ChevronDown } from 'lucide-react';
 import * as xlsx from 'xlsx';
 import { useState, useRef } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -302,6 +303,14 @@ export default function QuizResults() {
            </div>
         </div>
       )}
+
+      {/* Logo da Instituição - aparece na tela e no PDF */}
+      {settings?.logoUrl && (
+        <div className="flex justify-center mb-6">
+          <img src={settings.logoUrl} alt="Logo" className="h-20 object-contain" crossOrigin="anonymous" />
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/admin')} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" data-html2canvas-ignore>

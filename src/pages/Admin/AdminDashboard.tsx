@@ -9,10 +9,8 @@ export default function AdminDashboard() {
   const deleteQuiz = useQuizStore((state) => state.deleteQuiz);
   const submissions = useQuizStore((state) => state.submissions);
 
-  const [activeTab, setActiveTab] = useState<'quizzes' | 'responses'>('quizzes');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState<string | null>(null);
-  const settings = useQuizStore((state) => state.settings);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -88,28 +86,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-8 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('quizzes')}
-          className={`px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap border-b-2 ${
-            activeTab === 'quizzes' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Meus Quizzes
-        </button>
-        <button
-          onClick={() => setActiveTab('responses')}
-          className={`px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap border-b-2 ${
-            activeTab === 'responses' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Visualizar Respostas (Cards)
-        </button>
-      </div>
-
-      {activeTab === 'quizzes' ? (
-        quizzes.length === 0 ? (
+      {quizzes.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 border-dashed p-12 flex flex-col items-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <FileText className="w-8 h-8 text-gray-400" />
@@ -176,78 +153,7 @@ export default function AdminDashboard() {
               );
             })}
           </div>
-        )
-      ) : (
-        /* Aba de Respostas (Cards) */
-        <div className="space-y-10">
-          {quizzes.length === 0 ? (
-            <div className="text-center py-20 text-gray-500">Crie um quiz primeiro para ver as respostas aqui.</div>
-          ) : (
-            quizzes.map((quiz) => {
-              const quizSubmissions = submissions.filter(s => s.quizId === quiz.id).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-              
-              return (
-                <div key={quiz.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                  <div className="bg-indigo-900 px-6 py-4 flex justify-between items-center text-white">
-                    <div>
-                      <h3 className="font-bold text-lg">{quiz.title}</h3>
-                      <p className="text-indigo-200 text-xs">Total de {quizSubmissions.length} respostas registradas</p>
-                    </div>
-                    <button 
-                      onClick={() => navigate(`/admin/results/${quiz.id}`)}
-                      className="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Ver Relatório Completo
-                    </button>
-                  </div>
-                  
-                  <div className="p-6">
-                    {quizSubmissions.length === 0 ? (
-                      <div className="text-center py-8 text-gray-400 italic text-sm">Ninguém respondeu este quiz ainda.</div>
-                    ) : (
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {quizSubmissions.map((sub) => (
-                          <div key={sub.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 hover:border-indigo-200 transition-colors">
-                            <div className="flex justify-between items-start mb-3">
-                              <span className="font-bold text-gray-900 truncate pr-2">
-                                {sub.studentInfo.name || sub.studentInfo[settings?.customFields?.[0]?.id || ''] || 'Aluno Anônimo'}
-                              </span>
-                              <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                                {new Date(sub.submittedAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                            
-                            <div className="space-y-1 mb-4">
-                              {settings?.customFields?.slice(0, 3).map(f => (
-                                <p key={f.id} className="text-xs text-gray-500 truncate">
-                                  <span className="font-medium text-gray-700">{f.name}:</span> {sub.studentInfo[f.id] || '-'}
-                                </p>
-                              ))}
-                              {!settings?.customFields && (
-                                <>
-                                  <p className="text-xs text-gray-500 truncate"><span className="font-medium text-gray-700">Turma:</span> {sub.studentInfo.classRoom || '-'}</p>
-                                  <p className="text-xs text-gray-500 truncate"><span className="font-medium text-gray-700">Escola:</span> {sub.studentInfo.school || '-'}</p>
-                                </>
-                              )}
-                            </div>
-                            
-                            <button 
-                              onClick={() => navigate(`/admin/results/${quiz.id}`)}
-                              className="w-full py-2 bg-white border border-gray-200 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors"
-                            >
-                              Ver Respostas Detalhadas
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      )}
+        )}
     </div>
   );
 }
