@@ -6,6 +6,7 @@ import * as xlsx from 'xlsx';
 import { useState, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 
 export default function QuizResults() {
@@ -48,57 +49,109 @@ export default function QuizResults() {
     setSelectedFilterValue(tempSelectedFilterValue);
     setIsExportModalOpen(false);
     
-    if (!reportRef.current) return;
     setIsExportingPDF(true);
     
     try {
       const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
       await wait(500); 
       
-      const canvas = await html2canvas(reportRef.current, { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        backgroundColor: '#ffffff',
-        onclone: (clonedDoc: Document) => {
-          // Fix: html2canvas can't parse oklch() colors from TailwindCSS v4
-          const elements = clonedDoc.querySelectorAll('*');
-          const propsToFix = [
-            'color', 'background-color', 'border-color',
-            'border-top-color', 'border-right-color', 
-            'border-bottom-color', 'border-left-color',
-            'outline-color', 'text-decoration-color', 'fill', 'stroke'
-          ];
-          elements.forEach((el) => {
-            const htmlEl = el as HTMLElement;
-            const computed = window.getComputedStyle(htmlEl);
-            propsToFix.forEach((prop) => {
-              const val = computed.getPropertyValue(prop);
-              if (val && val !== 'none' && val !== 'initial') {
-                htmlEl.style.setProperty(prop, val);
-              }
-            });
-          });
+      const pdf = new jsPDF('l', 'pt', 'a4'); // Paisagem para caber as colunas
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      let currentY = 40;
+
+      pdf.setFontSize(18);
+      pdf.setTextColor(31, 41, 55);
+      pdf.text(quiz.title, pageWidth / 2, currentY, { align: 'center' });
+      currentY += 20;
+      
+      pdf.setFontSize(12);
+      pdf.setTextColor(107, 114, 128);
+      pdf.text(`Relatório de Resultados - ${tempSelectedFilterValue === 'all' ? 'Geral' : tempSelectedFilterValue}`, pageWidth / 2, currentY, { align: 'center' });
+      currentY += 30;
+
+      const targetSubmissions = tempSelectedFilterValue === 'all' 
+        ? submissions 
+        : submissions.filter(s => (s.studentInfo[tempFilterFieldId] || '-') === tempSelectedFilterValue);
+
+      const tableColumn = [];
+      tableColumn.push('Aluno');
+      if (settings?.customFields) {
+         settings.customFields.forEach(f => tableColumn.push(f.name));
+      } else {
+        tableColumn.push('Turma', 'Escola');
+      }
+      tableColumn.push('Data');
+      quiz.questions.forEach((q, i) => tableColumn.push(`Q${i + 1}`));
+
+      const tableRows = targetSubmissions.map(sub => {
+        const rowData = [];
+        rowData.push(sub.studentInfo.name || sub.studentInfo[settings?.customFields?.[0]?.id || ''] || 'Anônimo');
+        if (settings?.customFields) {
+           settings.customFields.forEach(f => rowData.push(sub.studentInfo[f.id] || '-'));
+        } else {
+          rowData.push(sub.studentInfo.classRoom || '-', sub.studentInfo.school || '-');
         }
+        rowData.push(new Date(sub.submittedAt).toLocaleDateString());
+
+        quiz.questions.forEach((q) => {
+          const answer = sub.answers.find(a => a.questionId === q.id);
+          if (q.type === 'multiple_choice' || q.type === 'survey') {
+            const selectedOpt = q.options?.find(o => o.id === answer?.selectedOptionId);
+            let text = selectedOpt ? selectedOpt.text : '-';
+            if (q.type === 'multiple_choice') {
+              const isCorrect = answer?.selectedOptionId === q.correctOptionId;
+              text += isCorrect ? ' (Certo)' : ' (Erro)';
+            }
+            rowData.push(text.length > 25 ? text.substring(0, 25) + '...' : text);
+          } else {
+            const t = answer?.answerText || '-';
+            rowData.push(t.length > 25 ? t.substring(0, 25) + '...' : t);
+          }
+        });
+        return rowData;
       });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      let heightLeft = pdfHeight;
-      let position = 0;
-      const pageHeight = pdf.internal.pageSize.getHeight();
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
+      autoTable(pdf, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: currentY,
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [79, 70, 229] },
+        margin: { top: 40, right: 20, bottom: 40, left: 20 },
+      });
 
-      while (heightLeft >= 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+      const chartsContainer = document.getElementById('pdf-charts-container');
+      if (chartsContainer) {
+        const canvas = await html2canvas(chartsContainer, { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          backgroundColor: '#ffffff',
+          onclone: (clonedDoc: Document) => {
+            const elements = clonedDoc.querySelectorAll('*');
+            const propsToFix = ['color', 'background-color', 'border-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'fill', 'stroke'];
+            elements.forEach((el) => {
+              const htmlEl = el as HTMLElement;
+              const computed = window.getComputedStyle(htmlEl);
+              propsToFix.forEach((prop) => {
+                const val = computed.getPropertyValue(prop);
+                if (val && val !== 'none' && val !== 'initial') htmlEl.style.setProperty(prop, val);
+              });
+            });
+          }
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const finalY = (pdf as any).lastAutoTable.finalY || currentY;
+        const chartPdfWidth = pdf.internal.pageSize.getWidth() - 40;
+        const chartPdfHeight = (canvas.height * chartPdfWidth) / canvas.width;
+        
+        if (finalY + chartPdfHeight + 20 > pdf.internal.pageSize.getHeight()) {
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 20, 40, chartPdfWidth, chartPdfHeight);
+        } else {
+          pdf.addImage(imgData, 'PNG', 20, finalY + 20, chartPdfWidth, chartPdfHeight);
+        }
       }
 
       pdf.save(`relatorio_${quiz.title.replace(/\s+/g, '_')}_${tempSelectedFilterValue}.pdf`);
@@ -544,7 +597,7 @@ export default function QuizResults() {
 
       {/* Gráficos no final do PDF (Renderizados apenas para captura se isExportingPDF) */}
       {(isExportingPDF) && (
-        <div className="mt-12 border-t pt-8">
+        <div id="pdf-charts-container" className="mt-12 border-t pt-8 bg-white p-4">
            <div className="text-center mb-8">
              <h2 className="text-2xl font-bold text-indigo-900">Resumo Estatístico do Filtro</h2>
              <p className="text-gray-500">Filtrado por: {tempSelectedFilterValue === 'all' ? 'Geral' : tempSelectedFilterValue}</p>
