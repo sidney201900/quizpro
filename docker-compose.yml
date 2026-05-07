@@ -7,16 +7,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "80:80"
+    # ports: # Comentado porque o Traefik cuidará do roteamento na porta 80/443
+    #   - "80:80"
     environment:
-      - VITE_API_URL=/api # Use a proxy or full URL
+      - VITE_API_URL=/api
     depends_on:
       - api
     networks:
       - quiz-net
+      - traefik-public # Rede para comunicação com o Traefik
     deploy:
       replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.quizpro.rule=Host(`quiz.microtecinformaticacurso.com.br`)"
+        - "traefik.http.routers.quizpro.entrypoints=websecure"
+        - "traefik.http.routers.quizpro.tls.certresolver=letsencrypt"
+        - "traefik.http.services.quizpro.loadbalancer.server.port=80"
+        - "traefik.docker.network=traefik-public"
 
   # Backend API
   api:
@@ -51,6 +59,8 @@ services:
 networks:
   quiz-net:
     driver: overlay
+  traefik-public:
+    external: true # Assume que você já tem essa rede criada para o Traefik
 
 volumes:
   quiz-db-data:
