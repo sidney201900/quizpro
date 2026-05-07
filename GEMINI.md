@@ -47,9 +47,10 @@ A robust, modern Quiz management system designed for educational institutions. I
 - The PDF export handles multi-page results by splitting the canvas image.
 
 ### Docker & Portainer Deployment (Swarm + Traefik)
-1. **Build**: `docker build -t quizpro:latest .`
-2. **Portainer**: 
-   - Vá em **Stacks** -> **Add Stack**.
-   - Use o repositório: `https://github.com/sidney201900/quizpro.git`.
+1. **Build Automático**: O GitHub Actions constrói a imagem `sidney201900/quizpro:latest` automaticamente a cada push.
+2. **Secrets**: Configure `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` no GitHub.
+3. **Portainer**: 
+   - Vá em **Stacks** -> **quizpro**.
+   - No **Editor**, clique em **Update the stack** e marque **Re-pull images**.
    - O domínio configurado é `quiz.microtecinformaticacurso.com.br`.
    - Certifique-se de que a rede `network_public` existe no seu Swarm.
