@@ -55,7 +55,32 @@ export default function QuizResults() {
       const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
       await wait(500); 
       
-      const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, logging: false });
+      const canvas = await html2canvas(reportRef.current, { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc: Document) => {
+          // Fix: html2canvas can't parse oklch() colors from TailwindCSS v4
+          const elements = clonedDoc.querySelectorAll('*');
+          const propsToFix = [
+            'color', 'background-color', 'border-color',
+            'border-top-color', 'border-right-color', 
+            'border-bottom-color', 'border-left-color',
+            'outline-color', 'text-decoration-color', 'fill', 'stroke'
+          ];
+          elements.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            const computed = window.getComputedStyle(htmlEl);
+            propsToFix.forEach((prop) => {
+              const val = computed.getPropertyValue(prop);
+              if (val && val !== 'none' && val !== 'initial') {
+                htmlEl.style.setProperty(prop, val);
+              }
+            });
+          });
+        }
+      });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'pt', 'a4');
       
